@@ -13,37 +13,18 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-from base64 import b64decode
-from io import BytesIO
-from fastapi import FastAPI, Request
-from PIL import Image
-import base64
-import traceback
 
 from vision_to_speech import VTS
-
-from fastapi.staticfiles import StaticFiles
-
-app = FastAPI()
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
-
+from config import get_config
 
 # Load environment variables
-def load_env():
-    """Load environment variables from .env file"""
-    env_path = ".env"
-    if os.path.exists(env_path):
-        with open(env_path, 'r') as file:
-            for line in file:
-                if '=' in line and not line.strip().startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    # Remove extra spaces around the key and value
-                    key = key.strip()
-                    value = value.strip()
-                    os.environ[key] = value
+config = get_config()
 
-# Load environment variables
-load_env()
+# Validate configuration on startup
+if not config.validate():
+    print("❌ Configuration error! Please check your .env file.")
+    print("💡 Copy .env.example to .env and add your real API keys")
+    exit(1)
 
 # Create directories for uploads and outputs
 UPLOAD_DIR = Path("uploads")
@@ -81,19 +62,8 @@ def get_vts_instance():
     """Get or create VTS instance"""
     global vts_instance
     if vts_instance is None:
-        gemini_key = os.getenv("GEMINI_API_KEY")
-        fpt_key = os.getenv("FPT_API_KEY")
-        
-        if not gemini_key:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-        if not fpt_key:
-            raise HTTPException(status_code=500, detail="FPT_API_KEY not configured")
-        
-        vts_instance = VTS(
-            gemini_api_key=gemini_key,
-            fpt_api_key=fpt_key,
-            voice=os.getenv("DEFAULT_VOICE", "banmai")
-        )
+        # VTS will automatically load from config
+        vts_instance = VTS()
     return vts_instance
 
 # Pydantic models
@@ -124,8 +94,7 @@ async def home():
 async def upload_image(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    voice: str = Form("banmai"),
-    wait_time: int = Form(10)
+    voice_id: str = Form("JBFqnCBsd6RMkjVDRZzb")
 ):
     """
     Upload image and convert to speech
@@ -154,13 +123,12 @@ async def upload_image(
         
         # Get VTS instance
         vts = get_vts_instance()
-        vts.set_voice(voice)
+        vts.set_voice(voice_id)
         
         # Perform conversion
         result = vts.convert(
             image_path=str(upload_path),
-            output_wav_path=str(output_path),
-            wait_time=wait_time
+            output_mp3_path=str(output_path)
         )
         
         # Clean up uploaded file
@@ -176,7 +144,7 @@ async def upload_image(
                 text_result=result["text_result"],
                 audio_url=f"/outputs/{output_filename}",
                 audio_filename=output_filename,
-                voice_used=result["voice_used"]
+                voice_used=result["voice_id"]
             )
         else:
             # Clean up output file if exists
@@ -208,8 +176,7 @@ async def upload_image(
 async def upload_image_async(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    voice: str = Form("banmai"),
-    wait_time: int = Form(10)
+    voice_id: str = Form("JBFqnCBsd6RMkjVDRZzb")
 ):
     """
     Upload image and convert to speech asynchronously
@@ -234,13 +201,12 @@ async def upload_image_async(
         process_conversion_async, 
         task_id, 
         file, 
-        voice, 
-        wait_time
+        voice_id
     )
     
     return {"task_id": task_id, "message": "Processing started"}
 
-async def process_conversion_async(task_id: str, file: UploadFile, voice: str, wait_time: int):
+async def process_conversion_async(task_id: str, file: UploadFile, voice_id: str):
     """Background task for processing conversion"""
     try:
         # Update status
@@ -264,15 +230,14 @@ async def process_conversion_async(task_id: str, file: UploadFile, voice: str, w
         
         # Get VTS instance
         vts = get_vts_instance()
-        vts.set_voice(voice)
+        vts.set_voice(voice_id)
         
         conversion_tasks[task_id]["progress"] = 50
         
         # Perform conversion
         result = vts.convert(
             image_path=str(upload_path),
-            output_wav_path=str(output_path),
-            wait_time=wait_time
+            output_mp3_path=str(output_path)
         )
         
         conversion_tasks[task_id]["progress"] = 90
@@ -293,7 +258,7 @@ async def process_conversion_async(task_id: str, file: UploadFile, voice: str, w
                     text_result=result["text_result"],
                     audio_url=f"/outputs/{output_filename}",
                     audio_filename=output_filename,
-                    voice_used=result["voice_used"]
+                    voice_used=result["voice_id"]
                 )
             })
         else:
@@ -398,48 +363,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-
-from fastapi.responses import JSONResponse
-
-@app.post("/upload_base64")
-async def upload_base64(request: Request):
-    try:
-        data = await request.json()
-        print("📩 Received keys:", data.keys())
-
-        if "image" not in data:
-            print("❌ Missing key 'image'")
-            return JSONResponse(content={"error": "Missing 'image' field in request body"}, status_code=400)
-
-        image_base64 = data["image"]
-        img_bytes = base64.b64decode(image_base64)
-
-        unique_id = str(uuid.uuid4())
-        upload_path = UPLOAD_DIR / f"{unique_id}.jpg"
-        output_path = OUTPUT_DIR / f"{unique_id}.mp3"
-
-        with open(upload_path, "wb") as f:
-            f.write(img_bytes)
-
-        vts = get_vts_instance()
-        result = vts.convert(str(upload_path), str(output_path))
-
-        os.remove(upload_path)
-
-        if result["success"]:
-            resp = {
-                "success": True,
-                "text_result": result["text_result"],
-                "audio_url": f"http://192.168.1.13:7000/outputs/{unique_id}.mp3",
-            }
-        else:
-            resp = {"success": False, "error": result["error"]}
-
-        print("✅ Sending response:", resp)
-        return JSONResponse(content=resp)
-
-    except Exception as e:
-        print("🔥 ERROR OCCURRED 🔥")
-        traceback.print_exc()
-        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
-
