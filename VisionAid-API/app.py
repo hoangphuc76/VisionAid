@@ -99,6 +99,9 @@ async def upload_image(
     """
     Upload image and convert to speech
     """
+
+    print(f"[START] /upload")
+    start_time = time.time()
     # Validate file type
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")

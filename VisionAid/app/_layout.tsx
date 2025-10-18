@@ -2,6 +2,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/src/config/toastConfig';
 import 'react-native-reanimated';
 import '../global.css';
 
@@ -24,11 +26,12 @@ export default function RootLayout() {
             gestureEnabled: false, // Disable default gestures to use our custom ones
           }}
         >
-          <Stack.Screen name="auth" />
+          {/* <Stack.Screen name="auth" /> */}
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />
+        <Toast config={toastConfig} />
       </ThemeProvider>
     </GestureHandlerRootView>
   );
