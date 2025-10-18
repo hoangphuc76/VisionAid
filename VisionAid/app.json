@@ -11,17 +11,26 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần truy cập vị trí của bạn để hiển thị bản đồ và chia sẻ vị trí.",
         "NSCameraUsageDescription": "Ứng dụng cần truy cập camera để phân tích đồ vật trước mặt người dùng",
         "NSMicrophoneUsageDescription": "Ứng dụng cần truy cập microphone nếu bạn muốn ghi âm video"
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyBDLZMyZq2MHFo7yHwnai4x9zLtE1ok1oo"
       }
     },
     "android": {
-      "permissions": ["CAMERA", "RECORD_AUDIO"],
+      "permissions": ["CAMERA", "RECORD_AUDIO", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBDLZMyZq2MHFo7yHwnai4x9zLtE1ok1oo"
+        }
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

@@ -10,6 +10,13 @@ export default function MainScreen() {
   const handlePress = (label: string) => {
     if (label === "Camera") {
       router.push("/CameraScreen"); 
+    } else if (label === "GPS") {
+      const userId = user?.uid ?? "userA";
+      const otherUserId = "userB";
+      router.push({
+        pathname: "/(tabs)/map",
+        params: { userId, otherUserId },
+      } as any);
     } else {
       Alert.alert(`Bạn đã bấm nút: ${label}`);
     }
