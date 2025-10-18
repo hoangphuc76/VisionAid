@@ -9,12 +9,12 @@ export const authApi = {
         password
       });
       
-      const { accessToken, refreshToken, user } = response.data;
+      const { accessToken, user } = response.data;
       
       // Lưu tokens vào AsyncStorage
       await AsyncStorage.multiSet([
         ['access_token', accessToken],
-        ['refresh_token', refreshToken],
+        // ['refresh_token', refreshToken],
         ['user_info', JSON.stringify(user)]
       ]);
       

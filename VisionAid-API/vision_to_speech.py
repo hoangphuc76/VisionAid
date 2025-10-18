@@ -43,6 +43,8 @@ class VTS:
         self.voice_id = voice_id or config.default_voice_id
         self.model = "gemini-2.5-flash-lite"
         
+        print(f"[DEBUG] ElevenLabs API Key: {elevenlabs_api_key or config.elevenlabs_api_key}")
+
         # Enhanced prompt with danger detection
         self.prompt = """
 Nhiệm vụ:

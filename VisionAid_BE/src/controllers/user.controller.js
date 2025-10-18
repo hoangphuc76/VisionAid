@@ -41,7 +41,6 @@ class UserController {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-
       // Basic validation
       if (!email || !password) {
         throw new ValidationError('Email and password are required');
@@ -51,7 +50,8 @@ class UserController {
 
       logger.info('User login successful', { 
         email, 
-        userId: result.user.id 
+        userId: result.user.id,
+        accessToken: result.token
       });
 
       res.status(200).json(result);

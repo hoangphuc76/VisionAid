@@ -112,7 +112,7 @@ class UserService {
       return {
         success: true,
         user: user.getProfile(),
-        token,
+        accessToken: token,
       };
     } catch (error) {
       logger.error('User login failed:', error);
