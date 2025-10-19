@@ -36,13 +36,7 @@ const config = {
     REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
-  // Vision API configuration
-  VISION_API: {
-    URL: process.env.VISION_API_URL || 'http://192.168.1.13:7000',
-    TIMEOUT: parseInt(process.env.VISION_API_TIMEOUT) || 30000,
-  },
-
-  // // Rate limiting
+  // Rate limiting
   // RATE_LIMIT: {
   //   WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   //   MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,

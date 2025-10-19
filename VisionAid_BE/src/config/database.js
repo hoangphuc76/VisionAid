@@ -11,7 +11,7 @@ const config = require('./config');
 const connectDB = async () => {
   try {
     // Use centralized config instead of direct process.env access
-    const connectionString = config.DB.URI || 
+    const connectionString = config.DB.URI ||
       `mongodb://${config.DB.HOST}:${config.DB.PORT}/${config.DB.DATABASE}`;
 
     const options = {

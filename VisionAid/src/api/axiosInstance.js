@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { SecureStorageService } from '../services/SecureStorageService';
 
-const BASE_URL = 'http://192.168.1.9:3000/api';
+const BASE_URL = 'https://visionaid-bjjc.onrender.com/api';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,

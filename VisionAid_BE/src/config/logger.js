@@ -50,7 +50,7 @@ const logger = winston.createLogger({
 });
 
 // Console transport for development
-if (process.env.NODE_ENV !== 'production') {
+// if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize({ all: true }),
@@ -61,7 +61,7 @@ if (process.env.NODE_ENV !== 'production') {
       })
     ),
   }));
-}
+// }
 
 // Create logs directory if it doesn't exist
 const fs = require('fs');
