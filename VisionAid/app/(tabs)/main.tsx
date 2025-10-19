@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, SafeAreaView, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { PanGestureHandler } from "react-native-gesture-handler";
 import { useAuth } from "../../src/hooks/useAuth";
+import { gestureService, GestureType } from "../../src/services/GestureService";
 import { voiceService } from "../../src/services/VoiceServiceAudio";
-import { gestureService, GestureType } from "../../src/services/GestureService"; 
 
 export default function MainScreen() {
   const router = useRouter();
@@ -94,8 +94,8 @@ export default function MainScreen() {
     if (label === "Camera") {
       router.push("/CameraScreen"); 
     } else if (label === "GPS") {
-      const userId = user?.uid ?? "userA";
-      const otherUserId = "userB";
+      const userId = user?._id ?? user?.id ?? "userA";
+      const otherUserId = user?.userFamily ?? ["userB"];
       router.push({
         pathname: "/(tabs)/map",
         params: { userId, otherUserId },

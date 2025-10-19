@@ -211,6 +211,59 @@ class UserController {
       next(error);
     }
   }
+
+  /**
+   * Set/replace userFamily for current user
+   * POST /api/users/profile/family
+   * body: { familyIds: ['id1','id2', ...] }
+   */
+  async setFamily(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { familyIds } = req.body;
+      if (!Array.isArray(familyIds)) {
+        throw new ValidationError('familyIds must be an array');
+      }
+      const updated = await userService.setUserFamily(userId, familyIds);
+      res.status(200).json({ success: true, user: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Add family members to current user
+   * POST /api/users/profile/family/add
+   * body: { familyIds: ['id1','id2'] }
+   */
+  async addFamily(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { familyIds } = req.body;
+      if (!Array.isArray(familyIds)) {
+        throw new ValidationError('familyIds must be an array');
+      }
+      const updated = await userService.addFamilyMembers(userId, familyIds);
+      res.status(200).json({ success: true, user: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Remove a family member from current user
+   * DELETE /api/users/profile/family/:memberId
+   */
+  async removeFamily(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { memberId } = req.params;
+      const updated = await userService.removeFamilyMember(userId, memberId);
+      res.status(200).json({ success: true, user: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new UserController();

@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters long'],
   },
+  userFamily:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
   role: {
     type: String,
     enum: ['user', 'admin'],
@@ -139,7 +143,8 @@ userSchema.statics.findActiveById = function(id) {
   return this.findOne({ 
     _id: id, 
     is_active: true 
-  }).select('-password_hash');
+  }).select('-password_hash')
+  .populate({ path: 'userFamily', select: 'id email created_at' });
 };
 
 // Get all active users with pagination

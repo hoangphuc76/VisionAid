@@ -83,4 +83,19 @@ router.get('/stats',
   })
 );
 
+router.post('/profile/family', 
+  authenticateToken,
+  asyncHandler(userController.setFamily)
+);
+
+router.post('/profile/family/add', 
+  authenticateToken,
+  asyncHandler(userController.addFamily)
+);
+
+router.delete('/profile/family/:memberId',
+  authenticateToken,
+  asyncHandler(userController.removeFamily)
+);
+
 module.exports = router;

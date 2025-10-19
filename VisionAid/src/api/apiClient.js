@@ -1,7 +1,7 @@
-import axiosInstance from './axiosInstance';
 import axios from 'axios';
+import axiosInstance from './axiosInstance';
 
-let pythonUrl = 'http://192.168.0.104:8000'
+let pythonUrl = 'http://192.168.1.9:3000/api'
 
 export const apiClient = {
   // Analyze image API

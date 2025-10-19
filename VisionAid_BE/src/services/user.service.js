@@ -343,6 +343,113 @@ class UserService {
       throw new UnauthorizedError('Invalid or expired token');
     }
   }
+
+  /**
+   * Replace user's family list (synchronizes both sides)
+   * @param {string} userId
+   * @param {string[]} familyIds
+   */
+  async setUserFamily(userId, familyIds = []) {
+    const user = await User.findById(userId);
+    if (!user || !user.is_active) throw new NotFoundError('User not found');
+
+    // Normalize incoming ids: unique, strings, remove self
+    const incoming = Array.isArray(familyIds)
+      ? Array.from(new Set(familyIds.map(String))).filter(id => id && id !== String(userId))
+      : [];
+
+    const existing = (user.userFamily || []).map(String);
+
+    const toAdd = incoming.filter(id => !existing.includes(id));
+    const toRemove = existing.filter(id => !incoming.includes(id));
+
+    // Add reciprocal links
+    await Promise.all(toAdd.map(async fid => {
+      if (!fid) return;
+      const f = await User.findById(fid);
+      if (f && f.is_active) {
+        f.userFamily = f.userFamily || [];
+        if (!f.userFamily.map(String).includes(String(userId))) {
+          f.userFamily.push(userId);
+          await f.save();
+        }
+      }
+    }));
+
+    // Remove reciprocal links
+    await Promise.all(toRemove.map(async fid => {
+      if (!fid) return;
+      const f = await User.findById(fid);
+      if (f) {
+        f.userFamily = (f.userFamily || []).filter(i => String(i) !== String(userId));
+        await f.save();
+      }
+    }));
+
+    // Set user's family (store as array of ids)
+    user.userFamily = incoming;
+    await user.save();
+
+    const updated = await User.findById(userId).select('-password_hash').populate({ path: 'userFamily', select: 'id email created_at' });
+    return updated.getProfile();
+  }
+
+  /**
+   * Add family members to user's userFamily (no duplicates) and sync reciprocal
+   * @param {string} userId
+   * @param {string[]} familyIds
+   */
+  async addFamilyMembers(userId, familyIds = []) {
+    const user = await User.findById(userId);
+    if (!user || !user.is_active) throw new NotFoundError('User not found');
+
+    user.userFamily = user.userFamily || [];
+    const existing = new Set(user.userFamily.map(String));
+    const toAdd = Array.from(new Set((familyIds || []).map(String))).filter(id => id && id !== String(userId) && !existing.has(id));
+
+    // Add reciprocal links in parallel
+    await Promise.all(toAdd.map(async fid => {
+      const f = await User.findById(fid);
+      if (f && f.is_active) {
+        f.userFamily = f.userFamily || [];
+        if (!f.userFamily.map(String).includes(String(userId))) {
+          f.userFamily.push(userId);
+          await f.save();
+        }
+      }
+    }));
+
+    // Append to user's list (avoid duplicates)
+    user.userFamily = Array.from(new Set([...(user.userFamily || []).map(String), ...toAdd]));
+    await user.save();
+
+    const updated = await User.findById(userId).select('-password_hash').populate({ path: 'userFamily', select: 'id email created_at' });
+    return updated.getProfile();
+  }
+
+  /**
+   * Remove a single family member from user's userFamily and sync reciprocal
+   * @param {string} userId
+   * @param {string} memberId
+   */
+  async removeFamilyMember(userId, memberId) {
+    const user = await User.findById(userId);
+    if (!user || !user.is_active) throw new NotFoundError('User not found');
+
+    // Remove from user
+    user.userFamily = (user.userFamily || []).filter(i => String(i) !== String(memberId));
+    await user.save();
+
+    // Remove reciprocal link
+    const other = await User.findById(memberId);
+    if (other) {
+      other.userFamily = (other.userFamily || []).filter(i => String(i) !== String(userId));
+      await other.save();
+    }
+
+    const updated = await User.findById(userId).select('-password_hash').populate({ path: 'userFamily', select: 'id email created_at' });
+    return updated.getProfile();
+  }
 }
 
 module.exports = new UserService();

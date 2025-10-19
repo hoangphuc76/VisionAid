@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getDatabase, onValue, ref, remove, set } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAaOSKoHv9yBLRlWXPoJrJZiHQFfWn29UU",
+  apiKey: process.env.firebaseConfig_apikey,
   authDomain: "zact-13cef.firebaseapp.com",
   databaseURL: "https://zact-13cef-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "zact-13cef",

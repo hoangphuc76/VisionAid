@@ -16,7 +16,7 @@
         "NSMicrophoneUsageDescription": "Ứng dụng cần truy cập microphone nếu bạn muốn ghi âm video"
       },
       "config": {
-        "googleMapsApiKey": "AIzaSyBDLZMyZq2MHFo7yHwnai4x9zLtE1ok1oo"
+        "googleMapsApiKey": ""
       }
     },
     "android": {
@@ -29,7 +29,7 @@
       },
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBDLZMyZq2MHFo7yHwnai4x9zLtE1ok1oo"
+          "apiKey": ""
         }
       },
       "edgeToEdgeEnabled": true,

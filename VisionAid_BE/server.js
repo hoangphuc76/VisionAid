@@ -10,6 +10,7 @@ const { initializeApp } = require('./src/app');
 const config = require('./src/config/config');
 const logger = require('./src/config/logger');
 const { mongoose } = require('./src/config/database');
+const { log } = require('winston');
 
 /**
  * Start the server
@@ -23,6 +24,7 @@ const startServer = async () => {
     const PORT = config.PORT;
     const server = app.listen(PORT, () => {
       logger.info(`🚀 VisionAid Backend Server started successfully`);
+      logger.info(` mongodb connected at ${mongoose.connection.host}:${mongoose.connection.port}/${mongoose.connection.name}`);
       logger.info(`📡 Server running on http://localhost:${PORT}`);
       logger.info(`🌍 Environment: ${config.NODE_ENV}`);
       logger.info(`📚 API Documentation: http://localhost:${PORT}/api/info`);
