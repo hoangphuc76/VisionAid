@@ -1,27 +1,42 @@
 import axiosInstance from './axiosInstance';
+import axios from 'axios';
+
+let pythonUrl = 'http://192.168.0.104:8000'
 
 export const apiClient = {
   // Analyze image API
   async analyzeImage(imageData) {
     try {
       const formData = new FormData();
-      formData.append('image', {
+      formData.append('file', {
         uri: imageData.uri,
         type: imageData.type || 'image/jpeg',
         name: imageData.name || 'image.jpg'
       });
 
-      const response = await axiosInstance.post('/analyze', formData, {
+      const response = await axios.post(`${pythonUrl}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
 
-      return response.data;
+      console.log('Response from Python server:', response.data);
+
+      // Transform response để match với format component expect
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        textResult: response.data.text_result,
+        audioUrl: `${pythonUrl}${response.data.audio_url}`, // Tạo full URL
+        audioFilename: response.data.audio_filename,
+        voiceUsed: response.data.voice_used,
+        error: response.data.error
+      };
     } catch (error) {
       throw error;
     }
   },
+
 
   // User profile APIs
   async getUserProfile() {

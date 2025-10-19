@@ -1,7 +1,7 @@
 # VisionAid - Git ignore file
 
 # Environment variables (contains sensitive API keys)
-.env
+# .env  # COMMENTED OUT - User wants to commit .env with API keys
 venv/
 # Python
 __pycache__/
