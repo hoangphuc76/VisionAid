@@ -12,6 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { authApi } from "../../src/api";
 
 export default function RegisterScreen() {
@@ -24,17 +25,39 @@ export default function RegisterScreen() {
 
   const onRegister = async () => {
     if (!email || !password) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi đăng ký",
+        text2: "Vui lòng nhập đầy đủ thông tin",
+        position: "top",
+        visibilityTime: 3000,
+      });
       return;
     }
     setLoading(true);
     try {
       await authApi.register({ email, password });
-      alert("Đăng ký thành công! Vui lòng đăng nhập.");
-      router.back();
+      Toast.show({
+        type: "success",
+        text1: "Thành công!",
+        text2: "Đăng ký thành công! Vui lòng đăng nhập.",
+        position: "top",
+        visibilityTime: 2000,
+      });
+      
+      // Navigate back after a short delay to show toast
+      setTimeout(() => {
+        router.back();
+      }, 500);
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || "Đăng ký thất bại";
-      alert(errorMessage);
+      Toast.show({
+        type: "error",
+        text1: "Đăng ký thất bại",
+        text2: errorMessage,
+        position: "top",
+        visibilityTime: 4000,
+      });
     } finally {
       setLoading(false);
     }

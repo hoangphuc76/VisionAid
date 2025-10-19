@@ -21,6 +21,7 @@ export default function MainScreen() {
     };
   }, []);
 
+
   const initializeScreen = async () => {
     // Initialize voice service
     await voiceService.initialize();
@@ -142,9 +143,7 @@ export default function MainScreen() {
             </View>
             <TouchableOpacity 
               style={styles.logoutButton} 
-              onPress={() => {
-                voiceService.speak("Chạm giữ để đăng xuất hoặc sử dụng cử chỉ");
-              }}
+              onPress={handleLogout}
             >
               <Text style={styles.logoutText}>Đăng xuất</Text>
             </TouchableOpacity>
