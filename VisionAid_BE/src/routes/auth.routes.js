@@ -32,14 +32,14 @@ router.post('/login',
   asyncHandler(userController.login)
 );
 
+
 /**
- * @route POST /api/auth/logout
- * @desc Logout user (optional endpoint for token cleanup)
- * @access Private
+ * @route POST /api/auth/refresh-token
+ * @desc Refresh access token using refresh token
+ * @access Public
  */
-router.post('/logout', 
-  authenticateToken,
-  asyncHandler(userController.logout)
+router.post('/refresh-token', 
+  asyncHandler(userController.refreshToken)
 );
 
 /**

@@ -50,6 +50,54 @@ router.put('/profile',
 );
 
 /**
+ * @route GET /api/users/profile
+ * @desc Get current user profile
+ * @access Private
+ */
+router.get('/profile', 
+  authenticateToken,
+  asyncHandler(userController.getProfile)
+);
+
+/**
+ * @route POST /api/users/refresh-token
+ * @desc Refresh access token using refresh token
+ * @access Public
+ */
+router.post('/refresh-token', 
+  asyncHandler(userController.refreshToken)
+);
+
+/**
+ * @route POST /api/users/logout
+ * @desc Logout user (revoke refresh token)
+ * @access Public
+ */
+router.post('/logout', 
+  asyncHandler(userController.logout)
+);
+
+/**
+ * @route POST /api/users/logout-all
+ * @desc Logout from all devices (revoke all refresh tokens)
+ * @access Private
+ */
+router.post('/logout-all', 
+  authenticateToken,
+  asyncHandler(userController.logoutAll)
+);
+
+/**
+ * @route GET /api/users/sessions
+ * @desc Get all active sessions for current user
+ * @access Private
+ */
+router.get('/sessions', 
+  authenticateToken,
+  asyncHandler(userController.getActiveSessions)
+);
+
+/**
  * @route DELETE /api/users/:id
  * @desc Deactivate user account (Admin only)
  * @access Private (Admin)

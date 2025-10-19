@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { SecureStorageService } from '../services/SecureStorageService';
 
 const BASE_URL = 'http://192.168.1.9:3000/api';
 
@@ -29,12 +29,12 @@ const processQueue = (error, token = null) => {
 axiosInstance.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('access_token');
+      const token = await SecureStorageService.getAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.log('Error getting token from AsyncStorage:', error);
+      console.log('Error getting token from SecureStorageService:', error);
     }
     return config;
   },
@@ -52,7 +52,7 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -70,8 +70,8 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem('refresh_token');
-        
+        const refreshToken = await SecureStorageService.getRefreshToken();
+
         if (!refreshToken) {
           throw new Error('No refresh token');
         }
@@ -84,26 +84,26 @@ axiosInstance.interceptors.response.use(
         const { accessToken, refreshToken: newRefreshToken } = response.data;
 
         // Lưu tokens mới
-        await AsyncStorage.setItem('access_token', accessToken);
+        await SecureStorageService.saveAccessToken(accessToken);
         if (newRefreshToken) {
-          await AsyncStorage.setItem('refresh_token', newRefreshToken);
+          await SecureStorageService.saveRefreshToken(newRefreshToken);
         }
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
+
         processQueue(null, accessToken);
-        
+
         return axiosInstance(originalRequest);
-        
+
       } catch (refreshError) {
         processQueue(refreshError, null);
-        
+
         // Clear tokens
-        await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
-        
+        await SecureStorageService.clearTokens();
+
         // TODO: Navigate to login
         console.log('Token refresh failed, user needs to login again');
-        
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

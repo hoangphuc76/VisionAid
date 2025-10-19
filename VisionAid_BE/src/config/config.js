@@ -32,6 +32,8 @@ const config = {
   JWT: {
     SECRET: process.env.JWT_SECRET || 'secretkey',
     EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h',
+    REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'refreshsecretkey',
+    REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
   // Vision API configuration

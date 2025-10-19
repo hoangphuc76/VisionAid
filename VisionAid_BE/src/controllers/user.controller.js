@@ -21,7 +21,13 @@ class UserController {
         throw new ValidationError('Email and password are required');
       }
 
-      const result = await userService.register({ email, password });
+      // Get metadata for refresh token
+      const metadata = {
+        ip_address: req.ip || req.connection.remoteAddress,
+        user_agent: req.get('user-agent'),
+      };
+
+      const result = await userService.register({ email, password }, metadata);
 
       logger.info('User registration successful', { 
         email, 
@@ -46,12 +52,19 @@ class UserController {
         throw new ValidationError('Email and password are required');
       }
 
-      const result = await userService.login({ email, password });
+      // Get metadata for refresh token
+      const metadata = {
+        ip_address: req.ip || req.connection.remoteAddress,
+        user_agent: req.get('user-agent'),
+      };
+
+      const result = await userService.login({ email, password }, metadata);
+
+      console.log('===login', result);
 
       logger.info('User login successful', { 
         email, 
         userId: result.user.id,
-        accessToken: result.token
       });
 
       res.status(200).json(result);
@@ -192,21 +205,30 @@ class UserController {
     }
   }
 
-  /**
-   * Logout user (Optional: for token blacklisting)
-   * POST /api/users/logout
-   */
-  async logout(req, res, next) {
-    try {
-      // In a simple JWT implementation, logout is handled on the client side
-      // For enhanced security, you might want to implement token blacklisting here
-      
-      logger.info('User logged out', { userId: req.user.id });
 
-      res.status(200).json({
-        success: true,
-        message: 'Logged out successfully',
-      });
+  /**
+   * Refresh access token
+   * POST /api/users/refresh-token
+   */
+  async refreshToken(req, res, next) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        throw new ValidationError('Refresh token is required');
+      }
+
+      // Get metadata
+      const metadata = {
+        ip_address: req.ip || req.connection.remoteAddress,
+        user_agent: req.get('user-agent'),
+      };
+
+      const result = await userService.refreshAccessToken(refreshToken, metadata);
+
+      logger.info('Access token refreshed', { userId: result.user.id });
+
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

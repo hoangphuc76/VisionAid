@@ -1,5 +1,6 @@
 import axiosInstance from './axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 export const authApi = {
   async login(email, password) {
@@ -9,17 +10,25 @@ export const authApi = {
         password
       });
       
-      const { accessToken, user } = response.data;
+      const { accessToken, refreshToken, user } = response.data;
       
-      // Lưu tokens vào AsyncStorage
-      await AsyncStorage.multiSet([
-        ['access_token', accessToken],
-        // ['refresh_token', refreshToken],
-        ['user_info', JSON.stringify(user)]
-      ]);
+      // Lưu tokens vào SecureStore (bảo mật hơn AsyncStorage)
+      if (accessToken) {
+        await SecureStore.setItemAsync('access_token', accessToken);
+      }
+      if (refreshToken) {
+        await SecureStore.setItemAsync('refresh_token', refreshToken);
+      }
       
-      return response.data;
+      // Lưu user info vào AsyncStorage (không nhạy cảm)
+      if (user) {
+        await AsyncStorage.setItem('user_info', JSON.stringify(user));
+      }
+      
+      console.log('✅ Login successful, tokens saved');
+      return { ...response.data, accessToken, refreshToken, user };
     } catch (error) {
+      console.error('❌ Login failed:', error);
       throw error;
     }
   },
@@ -27,6 +36,20 @@ export const authApi = {
   async register(userData) {
     try {
       const response = await axiosInstance.post('/auth/register', userData);
+      
+      const { accessToken, refreshToken, user } = response.data;
+      
+      // Lưu tokens cho user mới đăng ký
+      if (accessToken) {
+        await SecureStore.setItemAsync('access_token', accessToken);
+      }
+      if (refreshToken) {
+        await SecureStore.setItemAsync('refresh_token', refreshToken);
+      }
+      if (user) {
+        await AsyncStorage.setItem('user_info', JSON.stringify(user));
+      }
+      
       return response.data;
     } catch (error) {
       throw error;
@@ -35,17 +58,11 @@ export const authApi = {
   
   async logout() {
     try {
-      // Gọi API logout (nếu có)
-      await axiosInstance.post('/logout');
-    } catch (error) {
-      console.log('Logout API error:', error);
-    } finally {
-      // Xóa tất cả thông tin đăng nhập
-      await AsyncStorage.multiRemove([
-        'access_token', 
-        'refresh_token', 
-        'user_info'
-      ]);
+      await SecureStore.deleteItemAsync('access_token');
+      await AsyncStorage.removeItem('user_info');
+      console.log('✅ Logout successful, tokens cleared');
+    } catch (err) {
+      console.error('❌ Error clearing tokens:', err);
     }
   },
 
@@ -61,11 +78,40 @@ export const authApi = {
 
   async isLoggedIn() {
     try {
-      const token = await AsyncStorage.getItem('access_token');
+      const token = await SecureStore.getItemAsync('access_token');
       return !!token;
     } catch (error) {
       console.log('Check login status error:', error);
       return false;
+    }
+  },
+
+  async refreshToken() {
+    try {
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      
+      if (!refreshToken) {
+        throw new Error('No refresh token found');
+      }
+
+      const response = await axiosInstance.post('/auth/refresh-token', {
+        refreshToken
+      });
+
+      const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+      // Lưu tokens mới
+      if (accessToken) {
+        await SecureStore.setItemAsync('access_token', accessToken);
+      }
+      if (newRefreshToken) {
+        await SecureStore.setItemAsync('refresh_token', newRefreshToken);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Refresh token failed:', error);
+      throw error;
     }
   }
 };

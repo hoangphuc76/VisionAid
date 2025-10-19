@@ -1,20 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Image,
   ActivityIndicator,
   ScrollView,
   Switch,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
+import * as LocalAuthentication from "expo-local-authentication";
+import tw from "twrnc";
 import { useAuth } from "../../src/hooks/useAuth";
+import { TokenService } from "../../src/services/TokenService";
+import { SecureStorageService } from "../../src/services/SecureStorageService";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -22,9 +26,137 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [secureText, setSecureText] = useState(true);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>("");
+  const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
 
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithBiometric, user } = useAuth();
+
+  useEffect(() => {
+    checkBiometricSupport();
+    checkSavedCredentials();
+  }, []);
+
+  const checkBiometricSupport = async () => {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      setIsBiometricSupported(compatible);
+
+      if (compatible) {
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricType("face");
+        } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+          setBiometricType("fingerprint");
+        } else if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+          setBiometricType("iris");
+        }
+      }
+    } catch (error) {
+      console.log("Biometric check error:", error);
+    }
+  };
+
+  const checkSavedCredentials = async () => {
+    try {
+      const hasTokens = await SecureStorageService.hasValidTokens();
+      setHasSavedCredentials(hasTokens);
+      console.log('Has saved credentials:', hasTokens);
+    } catch (error) {
+      console.log("Check saved credentials error:", error);
+      setHasSavedCredentials(false);
+    }
+  };
+
+  const handleBiometricAuth = async () => {
+    try {
+      const saved = await LocalAuthentication.isEnrolledAsync();
+      if (!saved) {
+        Toast.show({
+          type: "error",
+          text1: "Chưa thiết lập",
+          text2: "Vui lòng thiết lập vân tay hoặc Face ID trong cài đặt thiết bị",
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
+
+      // Step 1: Biometric Authentication
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Xác thực để đăng nhập",
+        cancelLabel: "Hủy",
+        disableDeviceFallback: false,
+      });
+
+      if (!result.success) {
+        Toast.show({
+          type: "error",
+          text1: "Xác thực thất bại",
+          text2: "Vui lòng thử lại",
+          position: "top",
+          visibilityTime: 3000,
+        });
+        return;
+      }
+
+      // Step 2: Get refresh token and authenticate with backend
+      setLoading(true);
+      
+      const tokenResult = await TokenService.authenticateWithBiometricAndRefresh();
+
+      if (tokenResult.success) {
+        Toast.show({
+          type: "success",
+          text1: "Thành công!",
+          text2: "Đăng nhập bằng sinh trắc học thành công!",
+          position: "top",
+          visibilityTime: 2000,
+        });
+
+        setTimeout(() => {
+          router.push("/(tabs)/main");
+        }, 500);
+      } else {
+        // Handle different error scenarios
+        if (tokenResult.shouldRelogin) {
+          // Refresh token expired or invalid - need to login again
+          Toast.show({
+            type: "error",
+            text1: "Phiên đăng nhập hết hạn",
+            text2: tokenResult.error || "Vui lòng đăng nhập lại",
+            position: "top",
+            visibilityTime: 5000,
+          });
+          
+          // Clear saved credentials
+          await SecureStorageService.clearTokens();
+          setHasSavedCredentials(false);
+        } else {
+          // Network or other error
+          Toast.show({
+            type: "error",
+            text1: "Lỗi",
+            text2: tokenResult.error || "Không thể đăng nhập. Vui lòng thử lại",
+            position: "top",
+            visibilityTime: 4000,
+          });
+        }
+      }
+    } catch (error) {
+      console.log("Biometric auth error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể sử dụng xác thực sinh trắc học",
+        position: "top",
+        visibilityTime: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const onLogin = async () => {
     if (!email || !password) {
@@ -49,7 +181,6 @@ export default function LoginScreen() {
         visibilityTime: 2000,
       });
       
-      // Navigate after a short delay to show toast
       setTimeout(() => {
         router.push("/(tabs)/main");
       }, 500);
@@ -72,31 +203,24 @@ export default function LoginScreen() {
       colors={["#5EB8FF", "#052136"]} 
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      style={styles.background}
+      style={tw`flex-1 w-full h-full`}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
+      <ScrollView 
+        contentContainerStyle={tw`flex-grow justify-center items-center py-8 px-5`}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={tw`w-[96%] max-w-[420px] bg-white/98 rounded-3xl py-7 px-5.5 items-center shadow-2xl`}>
           {/* Logo */}
           <Image
             source={require("../../assets/images/placeholder.png")}
-            style={styles.logo}
+            style={tw`w-40 h-20 mb-2`}
             resizeMode="contain"
           />
 
-          {/* Title + avatar icon (row) */}
-          <View style={styles.headerRow}>
-            <View style={styles.titleWrap}>
-              <Text style={styles.greetText}>Chào mừng bạn{"\n"}đã trở lại!</Text>
-            </View>
 
-            <View style={styles.avatarCircle}>
-              <Ionicons name="person-outline" size={36} color="#111827" />
-            </View>
-          </View>
-
-          {/* Inputs */}
+          {/* Email Input */}
           <TextInput
-            style={styles.input}
+            style={tw`w-full border border-gray-900 rounded-xl py-3.5 px-4 mb-3 bg-white text-base text-gray-900`}
             placeholder="Email/ Số điện thoại"
             placeholderTextColor="#6B7280"
             value={email}
@@ -105,43 +229,116 @@ export default function LoginScreen() {
             autoCapitalize="none"
           />
 
-          <View style={styles.passwordRow}>
+          {/* Password Input with Eye Icon */}
+          <View style={tw`w-full flex-row items-center border border-gray-900 rounded-xl mb-1.5 bg-white`}>
             <TextInput
-              style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+              style={tw`flex-1 py-3.5 px-4 text-base text-gray-900`}
               placeholder="Mật khẩu"
               placeholderTextColor="#6B7280"
               secureTextEntry={secureText}
               value={password}
               onChangeText={setPassword}
             />
-            <TouchableOpacity style={styles.eyeButton} onPress={() => setSecureText(!secureText)}>
-              <Ionicons name={secureText ? "eye-off-outline" : "eye-outline"} size={22} color="#111827" />
+            <TouchableOpacity 
+              style={tw`px-3 justify-center items-center`} 
+              onPress={() => setSecureText(!secureText)}
+            >
+              <Ionicons 
+                name={secureText ? "eye-off-outline" : "eye-outline"} 
+                size={22} 
+                color="#111827" 
+              />
             </TouchableOpacity>
           </View>
 
-          {/* Forgot */}
-          <TouchableOpacity style={styles.forgotWrap}>
-            <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+          {/* Forgot Password */}
+          <TouchableOpacity style={tw`w-full items-end mb-3`}>
+            <Text style={tw`underline text-gray-900 text-sm`}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
-          {/* Remember switch */}
-          <View style={styles.rememberRow}>
+          {/* Remember Me Switch */}
+          <View style={tw`w-full flex-row items-center mb-3`}>
             <Switch value={rememberMe} onValueChange={setRememberMe} />
-            <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
+            <Text style={tw`ml-2 text-gray-900`}>Ghi nhớ đăng nhập</Text>
           </View>
 
-          {/* Button: use LinearGradient inside */}
-          <TouchableOpacity onPress={onLogin} disabled={loading} style={{ width: "100%" }}>
-            <LinearGradient colors={["#2A7BD7", "#0A3A66"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.loginButton}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Đăng nhập</Text>}
+          {/* Login Button */}
+          <TouchableOpacity 
+            onPress={onLogin} 
+            disabled={loading} 
+            style={tw`w-full`}
+          >
+            <LinearGradient 
+              colors={["#2A7BD7", "#0A3A66"]} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 1 }} 
+              style={tw`w-full py-3.5 rounded-xl items-center justify-center shadow-lg`}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={tw`text-white font-bold text-base`}>Đăng nhập</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Register link */}
-          <View style={styles.registerContainer}>
-            <Text style={styles.regText}>Bạn chưa có tài khoản?</Text>
+          {/* Biometric Authentication Options */}
+          {isBiometricSupported && hasSavedCredentials && (
+            <>
+              <View style={tw`w-full flex-row items-center my-5`}>
+                <View style={tw`flex-1 h-px bg-gray-300`} />
+                <Text style={tw`mx-3 text-gray-500 text-xs`}>Hoặc đăng nhập bằng</Text>
+                <View style={tw`flex-1 h-px bg-gray-300`} />
+              </View>
+
+              <View style={tw`flex-row justify-center items-center gap-5 mb-2`}>
+                {biometricType === "fingerprint" && (
+                  <TouchableOpacity 
+                    style={tw`items-center justify-center`}
+                    onPress={handleBiometricAuth}
+                    disabled={loading}
+                  >
+                    <View style={tw`w-16 h-16 rounded-full bg-blue-50 border-2 border-blue-600 justify-center items-center mb-1.5 ${loading ? 'opacity-50' : ''}`}>
+                      <Ionicons name="finger-print" size={32} color="#2A7BD7" />
+                    </View>
+                    <Text style={tw`text-gray-900 text-xs font-semibold`}>Vân tay</Text>
+                  </TouchableOpacity>
+                )}
+
+                {biometricType === "face" && (
+                  <TouchableOpacity 
+                    style={tw`items-center justify-center`}
+                    onPress={handleBiometricAuth}
+                    disabled={loading}
+                  >
+                    <View style={tw`w-16 h-16 rounded-full bg-blue-50 border-2 border-blue-600 justify-center items-center mb-1.5 ${loading ? 'opacity-50' : ''}`}>
+                      <Ionicons name="scan" size={32} color="#2A7BD7" />
+                    </View>
+                    <Text style={tw`text-gray-900 text-xs font-semibold`}>Khuôn mặt</Text>
+                  </TouchableOpacity>
+                )}
+
+                {biometricType === "iris" && (
+                  <TouchableOpacity 
+                    style={tw`items-center justify-center`}
+                    onPress={handleBiometricAuth}
+                    disabled={loading}
+                  >
+                    <View style={tw`w-16 h-16 rounded-full bg-blue-50 border-2 border-blue-600 justify-center items-center mb-1.5 ${loading ? 'opacity-50' : ''}`}>
+                      <Ionicons name="eye" size={32} color="#2A7BD7" />
+                    </View>
+                    <Text style={tw`text-gray-900 text-xs font-semibold`}>Mống mắt</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Register Link */}
+          <View style={tw`flex-row mt-4.5`}>
+            <Text style={tw`text-gray-900`}>Bạn chưa có tài khoản?</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/register")}>
-              <Text style={styles.regLink}> Đăng kí ngay!</Text>
+              <Text style={tw`text-blue-700 font-bold underline`}> Đăng kí ngay!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -149,138 +346,3 @@ export default function LoginScreen() {
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-  },
-  card: {
-    width: "96%",
-    maxWidth: 420,
-    backgroundColor: "rgba(255,255,255,0.98)", 
-    borderRadius: 22,
-    paddingVertical: 28,
-    paddingHorizontal: 22,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logo: {
-    width: 72,
-    height: 48,
-    marginBottom: 8,
-  },
-  headerRow: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  titleWrap: {
-    flex: 1,
-  },
-  greetText: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0B1220",
-    lineHeight: 30,
-  },
-  avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 1.6,
-    borderColor: "#111827",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  input: {
-    width: "100%",
-    borderWidth: 1.2,
-    borderColor: "#111827",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: "#fff",
-    fontSize: 15,
-    color: "#111827",
-  },
-  passwordRow: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.2,
-    borderColor: "#111827",
-    borderRadius: 12,
-    marginBottom: 6,
-    backgroundColor: "#fff",
-  },
-  eyeButton: {
-    paddingHorizontal: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  forgotWrap: {
-    width: "100%",
-    alignItems: "flex-end",
-    marginBottom: 12,
-  },
-  forgotText: {
-    textDecorationLine: "underline",
-    color: "#111827",
-    fontSize: 14,
-  },
-  rememberRow: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  rememberText: {
-    marginLeft: 8,
-    color: "#111827",
-  },
-  loginButton: {
-    width: "100%",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#0A3A66",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  loginButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  registerContainer: {
-    flexDirection: "row",
-    marginTop: 18,
-  },
-  regText: {
-    color: "#111827",
-  },
-  regLink: {
-    color: "#0A4BB8",
-    fontWeight: "700",
-    textDecorationLine: "underline",
-  },
-});
