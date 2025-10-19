@@ -9,12 +9,10 @@ const router = express.Router();
 // Import all route modules
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
-const analyzeRoutes = require('./analyze.routes');
 
 // Mount routes with appropriate prefixes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/analyze', analyzeRoutes);
 
 // Health check endpoint for the entire API
 router.get('/health', (req, res) => {
@@ -76,8 +74,6 @@ router.get('/info', (req, res) => {
   });
 });
 
-// Legacy support - Mount original /analyze endpoint at root level for backward compatibility
-// This ensures existing mobile app integrations continue to work
-router.post('/analyze', analyzeRoutes);
+
 
 module.exports = router;
