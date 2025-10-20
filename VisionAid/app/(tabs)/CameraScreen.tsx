@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Audio } from "expo-av";
+import { useRouter } from "expo-router";
 import { apiClient } from "../../src/api";
 
-export default function CameraScreen({ navigation }) {
+export default function CameraScreen() {
+  const router = useRouter();
   // ✅ TẤT CẢ HOOKS PHẢI Ở TRÊN CÙNG, TRƯỚC BẤT KỲ RETURN NÀO
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -146,7 +148,7 @@ export default function CameraScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation?.goBack?.()}
+        onPress={() => router.back()}
         activeOpacity={0.7}
       >
         <Text style={styles.backIcon}>←</Text>

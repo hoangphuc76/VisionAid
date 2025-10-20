@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert, SafeAreaView, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { PanGestureHandler } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 import { useAuth } from "../../src/hooks/useAuth";
 import { voiceService } from "../../src/services/VoiceServiceAudio";
 import { gestureService, GestureType } from "../../src/services/GestureService"; 
@@ -10,6 +11,7 @@ export default function MainScreen() {
   const router = useRouter();
   const { logout, user } = useAuth();
   const [isLogoutConfirmation, setIsLogoutConfirmation] = useState(false);
+  const hasPlayedInstructionsRef = useRef(false);
 
   useEffect(() => {
     initializeScreen();
@@ -23,28 +25,65 @@ export default function MainScreen() {
 
   const initializeScreen = async () => {
     // Initialize voice service
-    await voiceService.initialize();
-    
-    // Announce home screen after a short delay
-    setTimeout(async () => {
-      await voiceService.announceHomeScreen();
-    }, 1000);
+    try {
+      await voiceService.initialize();
+      
+      // Play gesture instructions only once per app session
+      if (!hasPlayedInstructionsRef.current) {
+        setTimeout(async () => {
+          try {
+            console.log('🎓 Playing gesture instructions (first time)...');
+            await voiceService.announceGestureInstructions();
+            hasPlayedInstructionsRef.current = true;
+          } catch (err) {
+            console.log('⚠️ Gesture instructions playback failed');
+          }
+        }, 1000);
+      } else {
+        // Subsequent visits - play normal home screen
+        setTimeout(async () => {
+          try {
+            await voiceService.announceHomeScreen();
+          } catch (err) {
+            console.log('⚠️ Audio playback skipped');
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      console.log('⚠️ Voice service initialization skipped');
+    }
   };
 
   const setupGestureHandlers = () => {
+    console.log('\n🔧 Setting up gesture handlers...');
     gestureService.addCallback(handleGesture);
+    console.log('✅ Gesture callback registered!\n');
   };
 
   const handleGesture = async (gestureType: GestureType) => {
+    console.log(`\n🎯🎯🎯 MAIN SCREEN - Gesture callback triggered! 🎯🎯🎯`);
+    console.log(`   Type: ${gestureType}`);
+    console.log(`================================================\n`);
+    
     switch (gestureType) {
       case 'double-swipe-left':
-        await voiceService.announceGestureDetected('camera');
+        console.log('📸📸📸 Opening Camera from double swipe left...');
+        console.log('   Step 1: Announcing gesture...');
+        try {
+          await voiceService.announceGestureDetected('camera');
+        } catch {
+          console.log('   ⚠️ Audio skipped');
+        }
+        console.log('   Step 2: Navigating to camera...');
         setTimeout(() => {
-          router.push("/CameraScreen");
+          console.log('   Step 3: Executing navigation!');
+          router.push("/(tabs)/CameraScreen");
+          console.log('   ✅ Navigation command sent!');
         }, 500);
         break;
         
       case 'double-swipe-right':
+        console.log('🗺️ Opening GPS from double swipe right...');
         await voiceService.announceGestureDetected('gps');
         setTimeout(() => {
           router.push("/(tabs)/gps");
@@ -52,6 +91,7 @@ export default function MainScreen() {
         break;
         
       case 'double-swipe-up':
+        console.log('⭐ Opening Premium from double swipe up...');
         await voiceService.announceGestureDetected('premium');
         setTimeout(() => {
           router.push("/(tabs)/premium");
@@ -59,6 +99,7 @@ export default function MainScreen() {
         break;
         
       case 'double-swipe-down':
+        console.log('🏠 Returning to home...');
         if (isLogoutConfirmation) {
           setIsLogoutConfirmation(false);
           await voiceService.announceHomeScreen();
@@ -69,6 +110,7 @@ export default function MainScreen() {
         break;
         
       case 'long-press':
+        console.log('🔐 Long press detected - Logout flow...');
         if (isLogoutConfirmation) {
           // Confirm logout
           handleLogout();
@@ -77,10 +119,19 @@ export default function MainScreen() {
           setIsLogoutConfirmation(true);
           await voiceService.announceGestureDetected('logout');
           await voiceService.announceLogoutConfirmation();
+          
+          // Auto-cancel logout confirmation after 5 seconds
+          setTimeout(() => {
+            if (isLogoutConfirmation) {
+              setIsLogoutConfirmation(false);
+              voiceService.speak('Đã hủy đăng xuất');
+            }
+          }, 5000);
         }
         break;
         
       default:
+        console.log('❓ Unknown gesture');
         await voiceService.announceGestureNotRecognized();
         break;
     }
@@ -123,8 +174,14 @@ export default function MainScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
-      <PanGestureHandler onGestureEvent={gestureService.handlePanGesture}>
-        <View style={styles.container}>
+      <PanGestureHandler 
+        onHandlerStateChange={gestureService.handlePanGesture}
+        minPointers={1}
+        maxPointers={1}
+        shouldCancelWhenOutside={false}
+        enabled={true}
+      >
+        <Animated.View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
@@ -149,15 +206,38 @@ export default function MainScreen() {
             
             {/* Gesture Instructions */}
             <View style={styles.instructionsContainer}>
-              <Text style={styles.instructionsTitle}>Cách sử dụng:</Text>
-              <Text style={styles.instructionItem}>👆 Vuốt 2 lần trái: Mở Camera AI</Text>
-              <Text style={styles.instructionItem}>👉 Vuốt 2 lần phải: Mở định vị GPS</Text>
-              <Text style={styles.instructionItem}>👆 Vuốt 2 lần lên: Mở Premium</Text>
-              <Text style={styles.instructionItem}>⏰ Chạm giữ 3 giây: Đăng xuất</Text>
+              <Text style={styles.instructionsTitle}>🎯 Hướng dẫn cử chỉ:</Text>
+              <Text style={styles.instructionItem}>👈👈 Vuốt trái 2 lần: Mở Camera AI</Text>
+              <Text style={styles.instructionItem}>👉👉 Vuốt phải 2 lần: Mở định vị GPS</Text>
+              <Text style={styles.instructionItem}>👆👆 Vuốt lên 2 lần: Mở Premium</Text>
+              <Text style={styles.instructionItem}>👇👇 Vuốt xuống 2 lần: Về màn hình chính</Text>
+              <Text style={styles.instructionItem}>⏱️ Giữ 2 giây: Đăng xuất</Text>
+              <Text style={styles.instructionItem}>💡 Vuốt ở bất kỳ đâu trên màn hình!</Text>
+              
+              {/* Test Button for Instructions Audio */}
+              <TouchableOpacity 
+                style={styles.testAudioButton}
+                onPress={async () => {
+                  try {
+                    console.log('🧪 Test: Playing gesture instructions...');
+                    await voiceService.announceGestureInstructions();
+                  } catch (error) {
+                    console.log('⚠️ Failed to play instructions');
+                  }
+                }}
+              >
+                <Text style={styles.testAudioText}>🔊 Nghe hướng dẫn cử chỉ</Text>
+              </TouchableOpacity>
+              
               {isLogoutConfirmation && (
-                <Text style={styles.logoutConfirmText}>
-                  Đang chờ xác nhận đăng xuất. Chạm giữ để xác nhận hoặc vuốt xuống để hủy.
-                </Text>
+                <View style={styles.logoutConfirmContainer}>
+                  <Text style={styles.logoutConfirmText}>
+                    ⚠️ Đang chờ xác nhận đăng xuất
+                  </Text>
+                  <Text style={styles.logoutConfirmSubtext}>
+                    Giữ lại 2 giây để xác nhận hoặc vuốt xuống để hủy
+                  </Text>
+                </View>
               )}
             </View>
             
@@ -214,7 +294,7 @@ export default function MainScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </PanGestureHandler>
     </SafeAreaView>
   );
@@ -350,11 +430,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 20,
   },
+  testAudioButton: {
+    marginTop: 12,
+    backgroundColor: "#3b82f6",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  testAudioText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  logoutConfirmContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#fef2f2",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#fca5a5",
+  },
   logoutConfirmText: {
     fontSize: 14,
-    color: "#ef4444",
-    fontWeight: "500",
-    marginTop: 8,
+    color: "#dc2626",
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  logoutConfirmSubtext: {
+    fontSize: 12,
+    color: "#991b1b",
     textAlign: "center",
   },
   featureContent: {

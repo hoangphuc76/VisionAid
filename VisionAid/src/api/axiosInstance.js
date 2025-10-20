@@ -1,7 +1,21 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+const getBaseURL = () => {
+  if (__DEV__) {
+    // Android Emulator
+    if (Platform.OS === 'android' && !Constants.isDevice) {
+      return 'http://10.0.2.2:3000/api';
+    }
+    
+    const COMPUTER_IP = '192.168.100.194';
+    return `http://${COMPUTER_IP}:3000/api`;
+  }
+  return 'https://your-production-url.com/api';
+};
 
-const BASE_URL = 'http://192.168.0.104:3000/api';
+const BASE_URL = getBaseURL();
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,

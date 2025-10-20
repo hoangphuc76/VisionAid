@@ -1,4 +1,4 @@
-import { audioManager, AudioPriority } from './AudioManager';
+import { audioManager, AudioPriority } from './AudioManager.simple';
 import * as Haptics from 'expo-haptics';
 
 /**
@@ -67,6 +67,13 @@ export class VoiceService {
     await audioManager.play('authentication/login_failed', {
       priority: 'CRITICAL',
       hapticFeedback: true,
+    });
+  }
+
+  public async announceGestureInstructions(): Promise<void> {
+    await audioManager.play('authentication/gesture_instructions', {
+      priority: 'HIGH',
+      hapticFeedback: false,
     });
   }
 

@@ -3,6 +3,8 @@ import axios from 'axios';
 
 let pythonUrl = 'http://192.168.0.104:8000'
 
+
+
 export const apiClient = {
   // Analyze image API
   async analyzeImage(imageData) {

@@ -37,8 +37,18 @@ export default function AuthScreen() {
       // In a real app, you'd extract user info from biometric auth
       await login('user@example.com', 'biometric-auth');
       
-      // Navigate to main screen
-      router.replace('/(tabs)/main');
+      // Play login success sound
+      await voiceService.announceAuthSuccess();
+      
+      // Wait a bit before playing gesture instructions
+      setTimeout(async () => {
+        await voiceService.announceGestureInstructions();
+      }, 1500);
+      
+      // Navigate to main screen after a short delay
+      setTimeout(() => {
+        router.replace('/(tabs)/main');
+      }, 2000);
     } catch (error) {
       console.error('Login error after biometric auth:', error);
       await voiceService.announceGenericError();
