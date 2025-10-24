@@ -28,6 +28,11 @@ logs/
 # # Production environment file (contains sensitive data)
 # .env.production
 
+# Firebase Service Account (CRITICAL - DO NOT COMMIT)
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+
 # OS generated files
 .DS_Store
 .DS_Store?

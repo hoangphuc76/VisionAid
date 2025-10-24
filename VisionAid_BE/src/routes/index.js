@@ -9,10 +9,12 @@ const router = express.Router();
 // Import all route modules
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
+const locationRoutes = require('./location.routes');
 
 // Mount routes with appropriate prefixes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/locations', locationRoutes);
 
 // Health check endpoint for the entire API
 router.get('/health', (req, res) => {
@@ -24,6 +26,7 @@ router.get('/health', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       users: '/api/users',
+      locations: '/api/locations',
       analyze: '/api/analyze',
     },
   });
