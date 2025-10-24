@@ -151,7 +151,7 @@ export default function MapScreen({ userId = "userA", otherUserIds = ["userB"] }
       });
 
       // 5️⃣ Cập nhật định kỳ vị trí (nếu user di chuyển)
-      Location.watchPositionAsync(
+      locationSubscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 1 },
         async (pos) => {
           const { latitude, longitude } = pos.coords;
@@ -173,6 +173,15 @@ export default function MapScreen({ userId = "userA", otherUserIds = ["userB"] }
 
     // 6️⃣ Dọn dữ liệu khi rời khỏi màn
     return () => {
+      // stop location watcher TRƯỚC KHI xóa dữ liệu
+      if (locationSubscription && typeof locationSubscription.remove === "function") {
+        try {
+          locationSubscription.remove();
+        } catch (e) {
+          console.warn("Failed to remove location subscription:", e);
+        }
+      }
+
       try {
         remove(ref(db, `locations/${userId}`));
       } catch (e) {
@@ -187,13 +196,6 @@ export default function MapScreen({ userId = "userA", otherUserIds = ["userB"] }
       });
       // clear otherLocations
       setOtherLocations({});
-
-      // stop location watcher
-      if (locationSubscription && typeof locationSubscription.remove === "function") {
-        try {
-          locationSubscription.remove();
-        } catch {}
-      }
     };
   }, []);
 
