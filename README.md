@@ -393,113 +393,172 @@ describe('2.1 updateLocation', () => {
 ## --------------------------------------------- Stage 6 ------------------------------------------------------------##
 
 VisionAid_BE/
-├── src/
-│   ├── app.js                            # 🚀 Express application
+│
+├── 📂 src/
 │   │
-│   ├── config/                           # ⚙️ Configuration
-│   │   ├── config.js                     # App config
-│   │   ├── database.js                   # 🐘 PostgreSQL setup
-│   │   ├── env.js                        # Environment variables
-│   │   └── logger.js                     # 📝 Winston logger
+│   ├── 📄 app.js                                    # 🚀 Express application entry
 │   │
-│   ├── controllers/                      # 🎮 Request handlers
-│   │   ├── location.controller.js        # 📍 GPS location CRUD
-│   │   │   ├── updateLocation()          # ✅ TESTED (21 cases)
-│   │   │   ├── getMyLocation()           # ✅ TESTED (6 cases)
-│   │   │   ├── getFamilyLocations()      # ✅ TESTED (9 cases)
-│   │   │   ├── getUserLocation()         # ✅ TESTED (10 cases)
-│   │   │   └── removeLocation()          # ✅ TESTED (3 cases)
+│   ├── 📁 config/                                   # ⚙️ Application Configuration
+│   │   ├── config.js                               # App-wide settings
+│   │   ├── database.js                             # 🐘 PostgreSQL connection
+│   │   ├── env.js                                  # Environment variables loader
+│   │   └── logger.js                               # 📝 Winston logger setup
+│   │
+│   ├── 📁 controllers/                              # 🎮 HTTP Request Handlers
 │   │   │
-│   │   ├── user.controller.js            # 👤 User management
-│   │   └── __tests__/
-│   │       ├── location.controller.test.js  # 🧪 63 tests (100% pass)
-│   │       └── ShoppingCart.test.js
-│   │
-│   ├── services/                         # 🛠️ Business logic
-│   │   ├── firebase.service.js           # 🔥 Firebase Realtime DB
-│   │   │   ├── updateLocation()
-│   │   │   ├── getLocation()
-│   │   │   ├── getMultipleLocations()
-│   │   │   └── removeLocation()
+│   │   ├── 📄 location.controller.js               # 📍 GPS Location Management
+│   │   │   │
+│   │   │   ├── 🟢 updateLocation()                 # ✅ TESTED (21 test cases)
+│   │   │   ├── 🟢 getMyLocation()                  # ✅ TESTED (6 test cases)
+│   │   │   ├── 🟢 getFamilyLocations()             # ✅ TESTED (9 test cases)
+│   │   │   ├── 🟢 getUserLocation()                # ✅ TESTED (10 test cases)
+│   │   │   └── 🟢 removeLocation()                 # ✅ TESTED (3 test cases)
 │   │   │
-│   │   ├── user.service.js               # User business logic
-│   │   └── __tests__/
-│   │       └── firebase.service.test.js  # 🧪 Firebase service tests
+│   │   ├── 📄 user.controller.js                   # 👤 User Management (CRUD)
+│   │   │
+│   │   └── 📁 __tests__/                           # 🧪 Controller Test Suites
+│   │       ├── location.controller.test.js         # ✅ 63 tests (100% pass)
+│   │       └── ShoppingCart.test.js                # Example test file
 │   │
-│   ├── models/                           # 📊 Database models (Sequelize)
-│   │   ├── user.model.js                 # User schema
-│   │   ├── refreshToken.model.js         # JWT refresh tokens
-│   │   └── index.js                      # Model exports
+│   ├── 📁 services/                                 # 🛠️ Business Logic Layer
+│   │   │
+│   │   ├── 📄 firebase.service.js                  # 🔥 Firebase Realtime DB
+│   │   │   │
+│   │   │   ├── updateLocation(userId, lat, lon)    # Save GPS coordinates
+│   │   │   ├── getLocation(userId)                 # Fetch user location
+│   │   │   ├── getMultipleLocations(userIds[])     # Batch location fetch
+│   │   │   └── removeLocation(userId)              # Delete location data
+│   │   │
+│   │   ├── 📄 user.service.js                      # User business logic
+│   │   │
+│   │   └── 📁 __tests__/                           # 🧪 Service Test Suites
+│   │       └── firebase.service.test.js            # Firebase integration tests
 │   │
-│   ├── routes/                           # 🛣️ API routes
-│   │   ├── auth.routes.js                # /api/auth/*
-│   │   ├── user.routes.js                # /api/users/*
-│   │   ├── location.routes.js            # /api/locations/*
-│   │   └── index.js                      # Route aggregator
+│   ├── 📁 models/                                   # 📊 Database Models (Sequelize ORM)
+│   │   │
+│   │   ├── 📄 user.model.js                        # User schema & associations
+│   │   ├── 📄 refreshToken.model.js                # JWT refresh token storage
+│   │   └── 📄 index.js                             # Model registry & exports
 │   │
-│   ├── middlewares/                      # 🔒 Express middlewares
-│   │   ├── auth.middleware.js            # JWT verification
-│   │   ├── validation.middleware.js      # Request validation
-│   │   ├── error.middleware.js           # Error handling
-│   │   ├── logger.middleware.js          # Request logging
-│   │   └── index.js
+│   ├── 📁 routes/                                   # 🛣️ API Route Definitions
+│   │   │
+│   │   ├── 📄 auth.routes.js                       # POST /api/auth/login, /register
+│   │   ├── 📄 user.routes.js                       # CRUD /api/users/*
+│   │   ├── 📄 location.routes.js                   # CRUD /api/locations/*
+│   │   └── 📄 index.js                             # Route aggregator & versioning
 │   │
-│   └── utils/                            # 🧰 Utility functions
-│       └── errors.js                     # Custom error classes
-│           ├── ValidationError
-│           ├── NotFoundError
-│           ├── UnauthorizedError
-│           └── ForbiddenError
+│   ├── 📁 middlewares/                              # 🔒 Express Middleware Stack
+│   │   │
+│   │   ├── 📄 auth.middleware.js                   # JWT verification & user injection
+│   │   ├── 📄 validation.middleware.js             # Request schema validation (Joi)
+│   │   ├── 📄 error.middleware.js                  # Global error handler
+│   │   ├── 📄 logger.middleware.js                 # HTTP request/response logging
+│   │   └── 📄 index.js                             # Middleware exports
+│   │
+│   └── 📁 utils/                                    # 🧰 Utility Functions & Helpers
+│       │
+│       └── 📄 errors.js                            # Custom Error Classes
+│           │
+│           ├── ValidationError                     # 400 Bad Request
+│           ├── NotFoundError                       # 404 Not Found
+│           ├── UnauthorizedError                   # 401 Unauthorized
+│           └── ForbiddenError                      # 403 Forbidden
 │
-├── coverage/                             # 📊 Jest coverage reports
-│   ├── lcov-report/                      # HTML coverage
-│   └── lcov.info                         # LCOV format
+├── 📁 coverage/                                     # 📊 Jest Code Coverage Reports
+│   │
+│   ├── 📁 lcov-report/                             # HTML coverage dashboard
+│   │   ├── index.html                              # Main coverage page
+│   │   ├── location.controller.js.html             # File-specific coverage
+│   │   └── ...                                     # Other files
+│   │
+│   └── 📄 lcov.info                                # LCOV format (for CI/CD)
 │
-├── logs/                                 # 📝 Application logs
-├── scripts/                              # 🔧 Utility scripts
-│   └── check-firebase.js                 # Firebase connection test
+├── 📁 logs/                                         # 📝 Application Runtime Logs
+│   ├── combined.log                                # All logs
+│   ├── error.log                                   # Error logs only
+│   └── ...
 │
-├── jest.config.js                        # 🧪 Jest configuration
-├── jest.setup.js                         # Jest setup file
-└── server.js                             # 🚀 Server entry point
+├── 📁 scripts/                                      # 🔧 Utility & Maintenance Scripts
+│   │
+│   └── 📄 check-firebase.js                        # Firebase connection health check
+│
+├── 📄 jest.config.js                               # 🧪 Jest Test Framework Config
+├── 📄 jest.setup.js                                # Jest global setup & mocks
+├── 📄 server.js                                    # 🚀 HTTP Server Entry Point
+└── 📄 package.json                                 # Node.js dependencies & scripts
 
-src/controllers/__tests__/
-└── location.controller.test.js          # ✅ 63 tests, 100% pass rate
-    │
-    ├── 2.1 updateLocation (21 tests)    # GPS location update
-    │   ├── ✅ Happy path
-    │   ├── ✅ Boundary values (±90°, ±180°)
-    │   ├── ✅ Validation errors
-    │   ├── ✅ Socket.IO emissions
-    │   ├── ✅ Family notifications
-    │   ├── ✅ Error propagation
-    │   └── ✅ Edge cases (NaN, Infinity, etc.)
-    │
-    ├── 2.2 getMyLocation (6 tests)
-    │   ├── ✅ Location exists
-    │   ├── ✅ Location not found
-    │   ├── ✅ Firebase errors
-    │   ├── ✅ Socket.IO behavior
-    │   └── ✅ Unauthenticated users
-    │
-    ├── 2.3 getFamilyLocations (9 tests)
-    │   ├── ✅ Multiple family members
-    │   ├── ✅ Empty family list
-    │   ├── ✅ User not found
-    │   ├── ✅ Partial data handling
-    │   └── ✅ Large family lists
-    │
-    ├── 2.4 getUserLocation (10 tests)
-    │   ├── ✅ Own location retrieval
-    │   ├── ✅ Family member access
-    │   ├── ✅ Access control
-    │   ├── ✅ Database errors
-    │   └── ✅ Invalid parameters
-    │
-    └── 2.5 removeLocation (3 tests)
-        ├── ✅ Successful deletion
-        ├── ✅ Firebase errors
-        └── ✅ Socket.IO unavailable
-
-src/services/__tests__/
-└── firebase.service.test.js             # Firebase Realtime DB tests
+📄 src/controllers/__tests__/location.controller.test.js
+│
+├── 📦 Test Suite: LocationController                # Main describe() block
+│   │
+│   ├── 🧩 2.1 updateLocation (21 tests)            # GPS location update endpoint
+│   │   │
+│   │   ├── ✅ Happy Path Tests (3 tests)
+│   │   │   ├── 2.1.1 - Valid coordinates update successfully
+│   │   │   ├── 2.1.5 - Emit location:updated to family members
+│   │   │   └── 2.1.6 - Succeed without Socket.IO when io is null
+│   │   │
+│   │   ├── 🧭 Edge Case Tests (8 tests)
+│   │   │   ├── 2.1.2 - Accept boundary values (±90°, ±180°)
+│   │   │   ├── 2.1.14 - Accept high-precision coordinates
+│   │   │   ├── 2.1.15 - Accept zero coordinates (0, 0)
+│   │   │   ├── 2.1.16 - Accept negative coordinates within range
+│   │   │   ├── 2.1.21 - Pass NaN through (typeof NaN is 'number')
+│   │   │   └── ...
+│   │   │
+│   │   ├── ⚠️ Validation Error Tests (7 tests)
+│   │   │   ├── 2.1.3 - Reject invalid range (lat>90, lon>180)
+│   │   │   ├── 2.1.4 - Reject non-numeric values (string, null)
+│   │   │   ├── 2.1.10 - Reject when latitude is missing
+│   │   │   ├── 2.1.11 - Reject when longitude is missing
+│   │   │   ├── 2.1.17 - Reject boolean values as coordinates
+│   │   │   ├── 2.1.18 - Reject array values as coordinates
+│   │   │   ├── 2.1.19 - Reject object values as coordinates
+│   │   │   └── 2.1.20 - Reject Infinity values
+│   │   │
+│   │   └── 🔥 Error Propagation Tests (3 tests)
+│   │       ├── 2.1.7 - Propagate firebaseService.updateLocation error
+│   │       ├── 2.1.8 - Propagate User.findById error
+│   │       └── 2.1.13 - Handle unauthenticated user (no user.id)
+│   │
+│   ├── 🧩 2.2 getMyLocation (6 tests)              # Fetch current user's location
+│   │   │
+│   │   ├── ✅ 2.2.1 - Return location when it exists
+│   │   ├── ⚠️ 2.2.2 - Return null when location does not exist
+│   │   ├── 🔥 2.2.3 - Propagate Firebase service error to next
+│   │   ├── 🧪 2.2.4 - Not emit any socket events (read-only)
+│   │   ├── 🧭 2.2.5 - Return incomplete location data as-is
+│   │   └── 🔥 2.2.6 - Handle unauthenticated user
+│   │
+│   ├── 🧩 2.3 getFamilyLocations (9 tests)         # Fetch all family members' locations
+│   │   │
+│   │   ├── ✅ 2.3.1 - Return locations for multiple family members
+│   │   ├── 🧭 2.3.2 - Return empty object when userFamily is empty
+│   │   ├── 🔥 2.3.3 - Throw NotFoundError when user does not exist
+│   │   ├── 🧭 2.3.4 - Handle partial location data correctly
+│   │   ├── 🔥 2.3.5 - Propagate Firebase service error to next
+│   │   ├── 🧭 2.3.6 - Handle null userFamily as empty array
+│   │   ├── ✅ 2.3.7 - Return location for single family member
+│   │   ├── 🔥 2.3.8 - Handle unauthenticated user
+│   │   └── 🧭 2.3.9 - Handle large family list efficiently
+│   │
+│   ├── 🧩 2.4 getUserLocation (10 tests)           # Fetch specific user's location
+│   │   │
+│   │   ├── ✅ 2.4.1 - Retrieve own location successfully
+│   │   ├── ✅ 2.4.2 - Retrieve family member location successfully
+│   │   ├── ⚠️ 2.4.3 - Reject non-family member request
+│   │   ├── 🧭 2.4.4 - Family member with no Firebase data returns null
+│   │   ├── 🔥 2.4.5 - Current user not found → NotFoundError
+│   │   ├── 🔥 2.4.6 - Invalid userId parameter → ValidationError
+│   │   ├── 🔥 2.4.7 - firebaseService.getLocation rejects → next(error)
+│   │   ├── 🔥 2.4.8 - Unauthenticated user returns 401
+│   │   ├── 🧪 2.4.9 - Validate access control logic
+│   │   └── 🧪 2.4.10 - Ensure no socket emissions
+│   │
+│   └── 🧩 2.5 removeLocation (3 tests)             # Delete user's location
+│       │
+│       ├── ✅ 2.5.1 - Remove location successfully
+│       ├── 🔥 2.5.2 - Propagate Firebase service error
+│       └── 🧭 2.5.3 - Succeed when Socket.IO unavailable
+│
+└── 📊 Total: 63 tests (100% pass rate)
