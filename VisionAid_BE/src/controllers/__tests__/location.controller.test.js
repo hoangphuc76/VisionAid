@@ -55,20 +55,14 @@ describe('LocationController', () => {
 
   // ==================== 2.1 updateLocation Tests ====================
   describe('2.1 updateLocation', () => {
-    
-    // Test 2.1.1: Valid coordinates
     it('2.1.1 - should update location successfully with valid coordinates', async () => {
       req.body = { latitude: 10.5, longitude: 106.7 };
       req.app.get.mockReturnValue(mockIo);
       firebaseService.updateLocation.mockResolvedValue(true);
       User.findById = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue({
-          userFamily: []
-        })
+        select: jest.fn().mockResolvedValue({ userFamily: [] })
       });
-
       await locationController.updateLocation(req, res, next);
-
       expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', 10.5, 106.7);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
@@ -85,7 +79,6 @@ describe('LocationController', () => {
       expect(next).not.toHaveBeenCalled();
     });
 
-    // Test 2.1.2: Boundary latitude values
     it.each([
       [-90, 0, 'minimum latitude'],
       [90, 0, 'maximum latitude'],
@@ -95,15 +88,12 @@ describe('LocationController', () => {
       req.body = { latitude: lat, longitude: lon };
       req.app.get.mockReturnValue(null);
       firebaseService.updateLocation.mockResolvedValue(true);
-
       await locationController.updateLocation(req, res, next);
-
       expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', lat, lon);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(next).not.toHaveBeenCalled();
     });
 
-    // Test 2.1.3: Invalid latitude range
     it.each([
       [91, 0, 'latitude must be between -90 and 90'],
       [-91, 0, 'latitude must be between -90 and 90'],
@@ -111,15 +101,12 @@ describe('LocationController', () => {
       [0, -181, 'longitude must be between -180 and 180']
     ])('2.1.3 - should reject invalid range: lat=%s, lon=%s', async (lat, lon, expectedMsg) => {
       req.body = { latitude: lat, longitude: lon };
-
       await locationController.updateLocation(req, res, next);
-
       expect(firebaseService.updateLocation).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(next.mock.calls[0][0].message).toBe(expectedMsg);
     });
 
-    // Test 2.1.4: Non-numeric coordinates
     it.each([
       ['10.5', 106.7, 'string latitude'],
       [10.5, '106.7', 'string longitude'],
@@ -128,29 +115,21 @@ describe('LocationController', () => {
       [10.5, undefined, 'undefined longitude']
     ])('2.1.4 - should reject non-numeric: %s, %s (%s)', async (lat, lon) => {
       req.body = { latitude: lat, longitude: lon };
-
       await locationController.updateLocation(req, res, next);
-
       expect(firebaseService.updateLocation).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(next.mock.calls[0][0].message).toBe('latitude and longitude must be numbers');
     });
 
-    // Test 2.1.5: Socket emission to family members
     it('2.1.5 - should emit location:updated to family members', async () => {
       req.body = { latitude: 10.5, longitude: 106.7 };
       req.app.get.mockReturnValue(mockIo);
       firebaseService.updateLocation.mockResolvedValue(true);
-      
-      const mockUser = {
-        userFamily: ['user2', 'user3']
-      };
+      const mockUser = { userFamily: ['user2', 'user3'] };
       User.findById = jest.fn().mockReturnValue({
         select: jest.fn().mockResolvedValue(mockUser)
       });
-
       await locationController.updateLocation(req, res, next);
-
       expect(User.findById).toHaveBeenCalledWith('user1');
       expect(mockIo.to).toHaveBeenCalledWith('user:user2');
       expect(mockIo.to).toHaveBeenCalledWith('user:user3');
@@ -160,51 +139,148 @@ describe('LocationController', () => {
         longitude: 106.7,
         timestamp: expect.any(Number)
       });
-      expect(mockIo.emit).toHaveBeenCalledTimes(3); // 1 for user + 2 for family
+      expect(mockIo.emit).toHaveBeenCalledTimes(3);
     });
 
-    // Test 2.1.6: No Socket.IO available
     it('2.1.6 - should succeed without Socket.IO when io is null', async () => {
       req.body = { latitude: 10.5, longitude: 106.7 };
       req.app.get.mockReturnValue(null);
       firebaseService.updateLocation.mockResolvedValue(true);
-
       await locationController.updateLocation(req, res, next);
-
       expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', 10.5, 106.7);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(mockIo.to).not.toHaveBeenCalled();
       expect(mockIo.emit).not.toHaveBeenCalled();
     });
 
-    // Test 2.1.7: Firebase service error propagation
     it('2.1.7 - should propagate firebaseService.updateLocation error to next', async () => {
       req.body = { latitude: 10.5, longitude: 106.7 };
       const mockError = new Error('Firebase connection failed');
       firebaseService.updateLocation.mockRejectedValue(mockError);
-
       await locationController.updateLocation(req, res, next);
-
       expect(next).toHaveBeenCalledWith(mockError);
       expect(res.status).not.toHaveBeenCalled();
     });
 
-    // Test 2.1.8: User.findById error during family emission
     it('2.1.8 - should propagate User.findById error to next', async () => {
       req.body = { latitude: 10.5, longitude: 106.7 };
       req.app.get.mockReturnValue(mockIo);
       firebaseService.updateLocation.mockResolvedValue(true);
-      
       const mockError = new Error('Database error');
       User.findById = jest.fn().mockReturnValue({
         select: jest.fn().mockRejectedValue(mockError)
       });
-
       await locationController.updateLocation(req, res, next);
-
       expect(next).toHaveBeenCalledWith(mockError);
     });
+
+    it('2.1.9 - should notify all family members after location update', async () => {
+      req.body = { latitude: 10.5, longitude: 106.7 };
+      req.app.get.mockReturnValue(mockIo);
+      firebaseService.updateLocation.mockResolvedValue(true);
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          userFamily: ['user2', 'user3', 'user4']
+        })
+      });
+      await locationController.updateLocation(req, res, next);
+      expect(mockIo.emit).toHaveBeenCalledTimes(4);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('2.1.10 - should reject when latitude is missing', async () => {
+      req.body = { longitude: 106.7 };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.11 - should reject when longitude is missing', async () => {
+      req.body = { latitude: 10.5 };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.12 - should reject when body is empty', async () => {
+      req.body = {};
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.13 - should handle unauthenticated user (no user.id)', async () => {
+      req.user = null;
+      req.body = { latitude: 10.5, longitude: 106.7 };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+    });
+
+    it('2.1.14 - should accept high-precision coordinates', async () => {
+      req.body = { latitude: 10.123456789, longitude: 106.987654321 };
+      req.app.get.mockReturnValue(null);
+      firebaseService.updateLocation.mockResolvedValue(true);
+      await locationController.updateLocation(req, res, next);
+      expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', 10.123456789, 106.987654321);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('2.1.15 - should accept zero coordinates', async () => {
+      req.body = { latitude: 0, longitude: 0 };
+      req.app.get.mockReturnValue(null);
+      firebaseService.updateLocation.mockResolvedValue(true);
+      await locationController.updateLocation(req, res, next);
+      expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', 0, 0);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('2.1.16 - should accept negative coordinates within range', async () => {
+      req.body = { latitude: -45.5, longitude: -120.3 };
+      req.app.get.mockReturnValue(null);
+      firebaseService.updateLocation.mockResolvedValue(true);
+      await locationController.updateLocation(req, res, next);
+      expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', -45.5, -120.3);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('2.1.17 - should reject boolean values as coordinates', async () => {
+      req.body = { latitude: true, longitude: false };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.18 - should reject array values as coordinates', async () => {
+      req.body = { latitude: [10.5], longitude: [106.7] };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.19 - should reject object values as coordinates', async () => {
+      req.body = { latitude: { value: 10.5 }, longitude: { value: 106.7 } };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.20 - should reject Infinity values', async () => {
+      req.body = { latitude: Infinity, longitude: 106.7 };
+      await locationController.updateLocation(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(firebaseService.updateLocation).not.toHaveBeenCalled();
+    });
+
+    it('2.1.21 - should pass NaN through since typeof NaN is number', async () => {
+      req.body = { latitude: NaN, longitude: 106.7 };
+      req.app.get.mockReturnValue(null);
+      firebaseService.updateLocation.mockResolvedValue(true);
+      await locationController.updateLocation(req, res, next);
+      expect(firebaseService.updateLocation).toHaveBeenCalledWith('user1', NaN, 106.7);
+    });
   });
+
 
   // ==================== 2.2 getMyLocation Tests ====================
   describe('2.2 getMyLocation', () => {
@@ -263,6 +339,33 @@ describe('LocationController', () => {
 
       expect(mockIo.to).not.toHaveBeenCalled();
       expect(mockIo.emit).not.toHaveBeenCalled();
+    });
+
+    // Test 2.2.5: Incomplete location data
+    it('2.2.5 - should return incomplete location data as-is', async () => {
+      const incompleteLocation = {
+        latitude: 10.5,
+        timestamp: 1234567890
+        // longitude missing
+      };
+      firebaseService.getLocation.mockResolvedValue(incompleteLocation);
+
+      await locationController.getMyLocation(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        location: incompleteLocation
+      });
+    });
+
+    // Test 2.2.6: Unauthenticated user
+    it('2.2.6 - should handle unauthenticated user', async () => {
+      req.user = null;
+
+      await locationController.getMyLocation(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     });
   });
 
@@ -378,6 +481,58 @@ describe('LocationController', () => {
         locations: {}
       });
     });
+
+    // Test 2.3.7: Single family member
+    it('2.3.7 - should return location for single family member', async () => {
+      const mockLocations = {
+        user2: { latitude: 10.5, longitude: 106.7, timestamp: 123 }
+      };
+      
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          userFamily: ['user2']
+        })
+      });
+      firebaseService.getMultipleLocations.mockResolvedValue(mockLocations);
+
+      await locationController.getFamilyLocations(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        locations: mockLocations
+      });
+    });
+
+    // Test 2.3.8: Unauthenticated user
+    it('2.3.8 - should handle unauthenticated user', async () => {
+      req.user = null;
+
+      await locationController.getFamilyLocations(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+    });
+
+    // Test 2.3.9: Large family list
+    it('2.3.9 - should handle large family list efficiently', async () => {
+      const familyIds = Array.from({ length: 50 }, (_, i) => `user${i + 2}`);
+      const mockLocations = {};
+      familyIds.forEach((id, index) => {
+        mockLocations[id] = { latitude: 10 + index * 0.1, longitude: 106 + index * 0.1, timestamp: 123 };
+      });
+      
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          userFamily: familyIds
+        })
+      });
+      firebaseService.getMultipleLocations.mockResolvedValue(mockLocations);
+
+      await locationController.getFamilyLocations(req, res, next);
+
+      expect(firebaseService.getMultipleLocations).toHaveBeenCalledWith(familyIds);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
   });
 
   // ==================== 2.4 getUserLocation Tests ====================
@@ -489,6 +644,63 @@ describe('LocationController', () => {
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(next.mock.calls[0][0].message).toBe('You can only view locations of your family members');
     });
+
+    // Test 2.4.7: Family member with no Firebase data
+    it('2.4.7 - should return null for family member with no location', async () => {
+      req.params.userId = 'user2';
+      
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          userFamily: ['user2']
+        })
+      });
+      firebaseService.getLocation.mockResolvedValue(null);
+
+      await locationController.getUserLocation(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        location: null
+      });
+    });
+
+    // Test 2.4.8: Invalid userId parameter (empty string)
+    it('2.4.8 - should handle empty userId parameter', async () => {
+      req.params.userId = '';
+
+      await locationController.getUserLocation(req, res, next);
+
+      // Will attempt to process but likely fail on validation or DB lookup
+      expect(next).toHaveBeenCalled();
+    });
+
+    // Test 2.4.9: Unauthenticated user
+    it('2.4.9 - should handle unauthenticated user', async () => {
+      req.user = null;
+      req.params.userId = 'user2';
+
+      await locationController.getUserLocation(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+    });
+
+    // Test 2.4.10: firebaseService.getLocation error propagation
+    it('2.4.10 - should propagate firebaseService.getLocation error', async () => {
+      req.params.userId = 'user2';
+      const mockError = new Error('Firebase read error');
+      
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          userFamily: ['user2']
+        })
+      });
+      firebaseService.getLocation.mockRejectedValue(mockError);
+
+      await locationController.getUserLocation(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(mockError);
+    });
   });
 
   // ==================== 2.5 removeLocation Tests ====================
@@ -578,6 +790,32 @@ describe('LocationController', () => {
       expect(firebaseService.removeLocation).toHaveBeenCalledWith('user1');
       expect(firebaseService.removeLocation).toHaveBeenCalledWith('user2');
       expect(firebaseService.removeLocation).toHaveBeenCalledTimes(2);
+    });
+
+    // Test 2.5.6: Idempotent deletion (delete twice)
+    it('2.5.6 - should handle idempotent deletion successfully', async () => {
+      req.app.get.mockReturnValue(mockIo);
+      firebaseService.removeLocation.mockResolvedValue(true);
+
+      // First deletion
+      await locationController.removeLocation(req, res, next);
+      
+      // Second deletion (idempotent)
+      await locationController.removeLocation(req, res, next);
+
+      expect(firebaseService.removeLocation).toHaveBeenCalledTimes(2);
+      expect(res.status).toHaveBeenCalledTimes(2);
+      expect(res.json).toHaveBeenCalledTimes(2);
+    });
+
+    // Test 2.5.7: Unauthenticated user
+    it('2.5.7 - should handle unauthenticated user', async () => {
+      req.user = null;
+
+      await locationController.removeLocation(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     });
   });
 });
