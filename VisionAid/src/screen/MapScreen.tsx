@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import MapView, { LatLng, Marker, Polyline } from "react-native-maps";
 import { db, onValue, ref, remove, set } from "../firebaseConfig";
+import axios from "axios";
+import polyline from "@mapbox/polyline";
 
 type LocationType = { latitude: number; longitude: number };
 
@@ -83,6 +85,7 @@ async function fetchGoogleRoute(origin: LatLng, dest: LatLng, apiKey: string, mo
   if (json.status !== "OK" || !json.routes || !json.routes.length) {
     throw new Error(`Directions API error: ${json.status}`);
   }
+  console.log("Directions API response:", json);
   const route = json.routes[0];
   // try to get leg distance (meters)
   const leg = route.legs && route.legs[0];
